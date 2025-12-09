@@ -1,4 +1,4 @@
--- REPLACE 'your_email@example.com' WITH YOUR ACTUAL EMAIL ADDRESS
+-- REPLACE 'floryn1984@outlook.com' WITH YOUR ACTUAL EMAIL ADDRESS
 
 -- 1. Force create a profile for your user if it's missing
 insert into public.profiles (id, email, role)

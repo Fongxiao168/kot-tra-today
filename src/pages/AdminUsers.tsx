@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
 import { format } from 'date-fns';
-import { Search, Shield, Ban, CheckCircle, Edit2, X, Download, Filter, Trash2, AlertTriangle } from 'lucide-react';
+import { Search, Shield, Ban, CheckCircle, Edit2, X, Download, Filter, Trash2, AlertTriangle, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ConfirmDialogProps {
@@ -56,6 +56,174 @@ function ConfirmDialog({ isOpen, title, message, type, onConfirm, onCancel }: Co
               Confirm
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface UserListProps {
+  users: Profile[];
+  onEdit: (user: Profile) => void;
+  onDelete: (userId: string, email: string) => void;
+  title?: string;
+  icon?: React.ReactNode;
+  className?: string;
+}
+
+function UserList({ users, onEdit, onDelete, title, icon, className = "" }: UserListProps) {
+  if (users.length === 0) return null;
+  
+  return (
+    <div className={`space-y-4 ${className}`}>
+      {title && (
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          {icon}
+          {title}
+        </h3>
+      )}
+      <div className="overflow-hidden bg-white border border-gray-200 shadow-sm rounded-xl dark:bg-gray-800 dark:border-gray-700">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900/50">
+              <tr>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">User</th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Role</th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Status</th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Joined</th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase dark:text-gray-400">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                        {user.email?.[0].toUpperCase()}
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">{user.email}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">ID: {user.id.slice(0, 8)}...</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                      user.role === 'admin' 
+                        ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800'
+                        : 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
+                    }`}>
+                      {user.role === 'admin' ? <Shield className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                      {user.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                      user.status === 'banned'
+                        ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
+                        : 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
+                    }`}>
+                      {user.status === 'banned' ? <Ban className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                      {user.status || 'active'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {format(new Date(user.created_at), 'MMM d, yyyy')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={() => onEdit(user)}
+                        className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        title="Edit User"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => onDelete(user.id, user.email || 'User')}
+                        className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+                        title="Delete User"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {users.map((user) => (
+            <div key={user.id} className="p-4 space-y-4 bg-white dark:bg-gray-800">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                    {user.email?.[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{user.email}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">ID: {user.id.slice(0, 8)}...</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button 
+                    onClick={() => onEdit(user)}
+                    className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => onDelete(user.id, user.email || 'User')}
+                    className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Role</div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                    user.role === 'admin' 
+                      ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800'
+                      : 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
+                  }`}>
+                    {user.role === 'admin' ? <Shield className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                    {user.role}
+                  </span>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Status</div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                    user.status === 'banned'
+                      ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
+                      : 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
+                  }`}>
+                    {user.status === 'banned' ? <Ban className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                    {user.status || 'active'}
+                  </span>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Joined Date</div>
+                  <div className="text-gray-900 dark:text-white">
+                    {format(new Date(user.created_at), 'MMM d, yyyy')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Showing {users.length} users
+          </p>
         </div>
       </div>
     </div>
@@ -196,6 +364,9 @@ export function AdminUsers() {
     return matchesSearch && matchesRole && matchesStatus;
   });
 
+  const adminUsers = filteredUsers.filter(user => user.role === 'admin');
+  const regularUsers = filteredUsers.filter(user => user.role !== 'admin');
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -270,156 +441,22 @@ export function AdminUsers() {
         </div>
       </div>
 
-      <div className="overflow-hidden bg-white border border-gray-200 shadow-sm rounded-xl dark:bg-gray-800 dark:border-gray-700">
-        {/* Desktop Table View */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">User</th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Role</th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Status</th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Joined</th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase dark:text-gray-400">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                        {user.email?.[0].toUpperCase()}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">{user.email}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">ID: {user.id.slice(0, 8)}...</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                      user.role === 'admin' 
-                        ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800'
-                        : 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
-                    }`}>
-                      {user.role === 'admin' ? <Shield className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                      user.status === 'banned'
-                        ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
-                        : 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
-                    }`}>
-                      {user.status === 'banned' ? <Ban className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
-                      {user.status || 'active'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {format(new Date(user.created_at), 'MMM d, yyyy')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end gap-2">
-                      <button 
-                        onClick={() => {
-                          setEditingUser(user);
-                          setIsModalOpen(true);
-                        }}
-                        className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                        title="Edit User"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteUserClick(user.id, user.email || 'User')}
-                        className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-                        title="Delete User"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <UserList 
+        users={adminUsers} 
+        onEdit={(user) => { setEditingUser(user); setIsModalOpen(true); }}
+        onDelete={handleDeleteUserClick}
+        title="Administrators"
+        icon={<Shield className="w-5 h-5 text-purple-600" />}
+        className="mb-8"
+      />
 
-        {/* Mobile Card View */}
-        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
-          {filteredUsers.map((user) => (
-            <div key={user.id} className="p-4 space-y-4 bg-white dark:bg-gray-800">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                    {user.email?.[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">{user.email}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">ID: {user.id.slice(0, 8)}...</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button 
-                    onClick={() => {
-                      setEditingUser(user);
-                      setIsModalOpen(true);
-                    }}
-                    className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteUserClick(user.id, user.email || 'User')}
-                    className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Role</div>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                    user.role === 'admin' 
-                      ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800'
-                      : 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
-                  }`}>
-                    {user.role === 'admin' ? <Shield className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
-                    {user.role}
-                  </span>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Status</div>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                    user.status === 'banned'
-                      ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
-                      : 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
-                  }`}>
-                    {user.status === 'banned' ? <Ban className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
-                    {user.status || 'active'}
-                  </span>
-                </div>
-                <div className="col-span-2">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Joined Date</div>
-                  <div className="text-gray-900 dark:text-white">
-                    {format(new Date(user.created_at), 'MMM d, yyyy')}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Showing {filteredUsers.length} of {users.length} users
-          </p>
-        </div>
-      </div>
+      <UserList 
+        users={regularUsers} 
+        onEdit={(user) => { setEditingUser(user); setIsModalOpen(true); }}
+        onDelete={handleDeleteUserClick}
+        title="Regular Users"
+        icon={<Users className="w-5 h-5 text-blue-600" />}
+      />
 
       {/* Edit User Modal */}
       {isModalOpen && editingUser && (

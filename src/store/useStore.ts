@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@supabase/supabase-js';
-import type { Account, Transaction, Category, Settings, Profile } from '../types';
+import type { Account, Transaction, Category, Settings, Profile, PaymentRequest } from '../types';
 import { supabase } from '../lib/supabase';
 import type { Language } from '../lib/i18n';
 
@@ -17,6 +17,7 @@ interface StoreState {
   language: Language;
   
   setUser: (user: User | null) => void;
+  setPaymentRequest: (request: PaymentRequest | null) => void;
   setLanguage: (language: Language) => void;
   fetchData: () => Promise<void>;
   
@@ -63,8 +64,9 @@ export const useStore = create<StoreState>()(
       },
       isLoading: false,
       language: 'en',
-
       setUser: (user) => set({ user }),
+      setPaymentRequest: (paymentRequest) => set({ paymentRequest }),
+      setLanguage: (language) => set({ language }),
       setLanguage: (language) => set({ language }),
       
       fetchData: async () => {

@@ -14,7 +14,7 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
   const [step, setStep] = useState<'choice' | 'form'>('choice');
   const [loading, setLoading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const { profile } = useStore();
+  const { profile, setPaymentRequest } = useStore();
 
   const handlePayNow = () => {
     setStep('form');
@@ -53,16 +53,22 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
         .getPublicUrl(fileName);
 
       // 3. Create payment request
-      const { error: dbError } = await supabase
+      const { data: newRequest, error: dbError } = await supabase
         .from('payment_requests')
         .insert({
           user_id: profile.id,
           amount: 3.00,
           receipt_url: publicUrl,
           status: 'pending'
-        });
+        })
+        .select()
+        .single();
 
       if (dbError) throw dbError;
+
+      if (newRequest) {
+        setPaymentRequest(newRequest as any);
+      }
 
       toast.success('Payment receipt submitted! Admin will review shortly.');
       onClose();

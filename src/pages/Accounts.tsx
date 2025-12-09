@@ -135,6 +135,10 @@ export const Accounts = () => {
         </div>
         <button
           onClick={() => {
+            if (paymentRequest?.status === 'pending') {
+              toast.info(t.paymentProcessingAlert);
+              return;
+            }
             if (!profile?.is_premium) {
               setIsPaymentModalOpen(true);
               return;

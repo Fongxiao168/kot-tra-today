@@ -94,6 +94,7 @@ export const translations = {
       paymentApprovedTitle: 'Account Activated',
       paymentApproved: 'Congratulations! Your account is fully activated. You can now transact without limits.',
       tryAgain: 'Try Again',
+      paymentProcessingAlert: 'Your payment is under processing please be patient',
     },
     transactions: {
       title: 'Transactions',
@@ -266,6 +267,7 @@ export const translations = {
       paymentApprovedTitle: 'គណនីត្រូវបានបើកដំណើរការ',
       paymentApproved: 'សូមអបអរសាទរ! គណនីរបស់អ្នកត្រូវបានបើកដំណើរការពេញលេញ។ ឥឡូវនេះអ្នកអាចធ្វើប្រតិបត្តិការដោយគ្មានដែនកំណត់។',
       tryAgain: 'ព្យាយាមម្តងទៀត',
+      paymentProcessingAlert: 'ការទូទាត់របស់អ្នកកំពុងដំណើរការ សូមមេត្តារង់ចាំ',
     },
     transactions: {
       title: 'ប្រតិបត្តិការ',
@@ -427,11 +429,12 @@ export const translations = {
       paymentPendingTitle: '付款处理中',
       paymentPending: '感谢您的付款。我们的团队正在核实您的收据。请耐心等待。',
       paymentRejectedTitle: '付款被拒绝',
-      paymentRejected: '付款被拒绝。我们无法核实您的付款。请检查详细信息并上传新的收据。',
       paymentApprovedTitle: '账户已激活',
       paymentApproved: '恭喜！您的账户已完全激活。您现在可以无限制地进行交易。',
       tryAgain: '重试',
+      paymentProcessingAlert: '您的付款正在处理中，请耐心等待',
     },
+    transactions: {
     transactions: {
       update: '更新',
       delete: '删除',

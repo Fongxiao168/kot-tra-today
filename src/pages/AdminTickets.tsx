@@ -119,50 +119,91 @@ export function AdminTickets() {
       </div>
 
       <div className="bg-white border border-gray-200 shadow-sm rounded-xl dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-900/50">
-            <tr>
-              <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Status</th>
-              <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Subject</th>
-              <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">User</th>
-              <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Priority</th>
-              <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Created</th>
-              <th className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase dark:text-gray-400">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {tickets.map((ticket) => (
-              <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer" onClick={() => setSelectedTicket(ticket)}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                    {ticket.status.replace('_', ' ')}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm font-medium text-gray-900 dark:text-white">{ticket.subject}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">{ticket.profiles?.full_name || 'Unknown'}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">{ticket.profiles?.email}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`text-xs font-medium uppercase ${
-                    ticket.priority === 'urgent' ? 'text-red-600' : 
-                    ticket.priority === 'high' ? 'text-orange-600' : 'text-gray-500'
-                  }`}>
-                    {ticket.priority}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {format(new Date(ticket.created_at), 'MMM dd')}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button className="text-blue-600 hover:text-blue-900 dark:hover:text-blue-400">View</button>
-                </td>
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900/50">
+              <tr>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Status</th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Subject</th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">User</th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Priority</th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Created</th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase dark:text-gray-400">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {tickets.map((ticket) => (
+                <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer" onClick={() => setSelectedTicket(ticket)}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
+                      {ticket.status.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{ticket.subject}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">{ticket.profiles?.full_name || 'Unknown'}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{ticket.profiles?.email}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`text-xs font-medium uppercase ${
+                      ticket.priority === 'urgent' ? 'text-red-600' : 
+                      ticket.priority === 'high' ? 'text-orange-600' : 'text-gray-500'
+                    }`}>
+                      {ticket.priority}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {format(new Date(ticket.created_at), 'MMM dd')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button className="text-blue-600 hover:text-blue-900 dark:hover:text-blue-400">View</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {tickets.map((ticket) => (
+            <div key={ticket.id} className="p-4 space-y-3 bg-white dark:bg-gray-800 cursor-pointer" onClick={() => setSelectedTicket(ticket)}>
+              <div className="flex justify-between items-start">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
+                  {ticket.status.replace('_', ' ')}
+                </span>
+                <span className={`text-xs font-medium uppercase ${
+                  ticket.priority === 'urgent' ? 'text-red-600' : 
+                  ticket.priority === 'high' ? 'text-orange-600' : 'text-gray-500'
+                }`}>
+                  {ticket.priority}
+                </span>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white">{ticket.subject}</h3>
+                <div className="mt-1 flex items-center text-xs text-gray-500 dark:text-gray-400">
+                  <span className="font-medium text-gray-700 dark:text-gray-300 mr-2">
+                    {ticket.profiles?.full_name || 'Unknown'}
+                  </span>
+                  <span>{ticket.profiles?.email}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {format(new Date(ticket.created_at), 'MMM dd, HH:mm')}
+                </span>
+                <button className="text-sm font-medium text-blue-600 hover:text-blue-900 dark:hover:text-blue-400">
+                  View Details
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Ticket Detail Modal */}

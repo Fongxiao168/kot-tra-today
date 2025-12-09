@@ -130,3 +130,13 @@ export interface TicketMessage {
   created_at: string;
   profiles?: Profile;
 }
+
+export interface UserActivityLog {
+  id: string;
+  user_id: string;
+  activity_type: string;
+  description: string;
+  metadata: any;
+  created_at: string;
+  profiles?: Profile;
+}

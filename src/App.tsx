@@ -19,10 +19,12 @@ import { AdminAnnouncements } from './pages/AdminAnnouncements';
 import { AdminLogs } from './pages/AdminLogs';
 import { AdminSettings } from './pages/AdminSettings';
 import { AdminTickets } from './pages/AdminTickets';
+import { AdminHistory } from './pages/AdminHistory';
 import AdminChat from './pages/AdminChat';
 import ChatWidget from './components/ChatWidget';
 
 import { AdminLogin } from './pages/AdminLogin';
+import { UpdatePassword } from './pages/UpdatePassword';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, profile, isLoading } = useStore();
@@ -48,19 +50,35 @@ function ProtectedAdminRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { settings, fetchData, setUser } = useStore();
+  const [isInitializing, setIsInitializing] = React.useState(true);
 
   useEffect(() => {
     // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) fetchData();
+      
+      // If we have a session, we are done initializing.
+      // If we don't have a session, but we have a hash with access_token, 
+      // we might be in the middle of a recovery flow, so we wait for onAuthStateChange.
+      if (session || !window.location.hash.includes('access_token')) {
+        setIsInitializing(false);
+      }
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) fetchData();
+      
+      // If we are in a recovery flow, we want to ensure we have the session before stopping initialization
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+         setIsInitializing(false);
+      } else if (!window.location.hash.includes('access_token')) {
+         // For other events like SIGNED_OUT, only stop initializing if we are not waiting for a token
+         setIsInitializing(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -74,12 +92,17 @@ function App() {
     }
   }, [settings.theme]);
 
+  if (isInitializing) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
   return (
     <Router>
       <Toaster position='top-right' richColors />
       <ChatWidget />
       <Routes>
         <Route path='/auth' element={<Auth />} />
+        <Route path='/update-password' element={<UpdatePassword />} />
         <Route path='/admin/login' element={<AdminLogin />} />
         <Route path='/banned' element={<Banned />} />
         
@@ -94,8 +117,9 @@ function App() {
           <Route path='announcements' element={<AdminAnnouncements />} />
           <Route path='logs' element={<AdminLogs />} />
           <Route path='settings' element={<AdminSettings />} />
-          <Route path='tickets' element={<AdminTickets />} />
-          <Route path='chat' element={<AdminChat />} />
+          <Route path="tickets" element={<AdminTickets />} />
+          <Route path="history" element={<AdminHistory />} />
+          <Route path="chat" element={<AdminChat />} />
         </Route>
 
         {/* User Routes */}

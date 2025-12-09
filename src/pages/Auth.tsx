@@ -15,6 +15,7 @@ type AuthMethod = 'email' | 'phone';
 
 export const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [authMethod, setAuthMethod] = useState<AuthMethod>('email');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -26,12 +27,16 @@ export const Auth = () => {
 
   const authSchema = z.object({
     email: z.string().email(t.invalidEmail),
-    password: z.string().min(6, t.passwordLength),
-    confirmPassword: isLogin 
+    password: isForgotPassword 
       ? z.string().optional() 
-      : z.string()
+      : z.string().min(6, t.passwordLength),
+    confirmPassword: (isLogin && !isForgotPassword)
+      ? z.string().optional() 
+      : isForgotPassword 
+        ? z.string().optional()
+        : z.string()
   }).refine((data) => {
-    if (!isLogin && data.password !== data.confirmPassword) {
+    if (!isLogin && !isForgotPassword && data.password !== data.confirmPassword) {
       return false;
     }
     return true;
@@ -53,7 +58,7 @@ export const Auth = () => {
 
   useEffect(() => {
     reset();
-  }, [isLogin, authMethod, reset, validLanguage]);
+  }, [isLogin, isForgotPassword, authMethod, reset, validLanguage]);
 
   const handleFacebookLogin = async () => {
     try {
@@ -70,9 +75,21 @@ export const Auth = () => {
     setIsLoading(true);
     
     try {
+      if (isForgotPassword) {
+        const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+          redirectTo: `${window.location.origin}/update-password`,
+        });
+        if (error) throw error;
+        toast.success(t.resetLinkSent);
+        setIsForgotPassword(false);
+        setIsLogin(true);
+        setIsLoading(false);
+        return;
+      }
+
       const credentials = {
         email: data.email,
-        password: data.password
+        password: data.password! // Non-null assertion since we know it exists if not forgot password
       };
 
       if (isLogin) {
@@ -93,6 +110,13 @@ export const Auth = () => {
             toast.error("Please use the Admin Portal to sign in.");
             setIsLoading(false);
             return;
+          }
+
+          // Log user login
+          try {
+            await supabase.rpc('log_user_login', { user_id: user.id });
+          } catch (e) {
+            console.error('Failed to log login:', e);
           }
         }
 
@@ -167,12 +191,16 @@ export const Auth = () => {
 
         <div className="text-center mb-8 mt-4">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            {isLogin ? t.signIn : t.signUp}
+            {isForgotPassword 
+              ? t.resetPassword 
+              : isLogin ? t.signIn : t.signUp}
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            {isLogin
-              ? t.welcomeBack
-              : t.signUpSuccess.replace('!', '')} 
+            {isForgotPassword
+              ? t.enterEmailForReset
+              : isLogin
+                ? t.welcomeBack
+                : t.signUpSuccess.replace('!', '')} 
           </p>
         </div>
 
@@ -217,22 +245,35 @@ export const Auth = () => {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t.password}
-            </label>
-            <input
-              {...register('password')}
-              type="password"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="••••••••"
-            />
-            {errors.password && (
-              <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>
-            )}
-          </div>
+          {!isForgotPassword && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {t.password}
+                </label>
+                {isLogin && (
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPassword(true)}
+                    className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    {t.forgotPassword}
+                  </button>
+                )}
+              </div>
+              <input
+                {...register('password')}
+                type="password"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="••••••••"
+              />
+              {errors.password && (
+                <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>
+              )}
+            </div>
+          )}
 
-          {!isLogin && (
+          {!isLogin && !isForgotPassword && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t.confirmPassword}
@@ -256,23 +297,36 @@ export const Auth = () => {
           >
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isForgotPassword ? (
+              <Mail className="w-4 h-4" />
             ) : isLogin ? (
               <LogIn className="w-4 h-4" />
             ) : (
               <UserPlus className="w-4 h-4" />
             )}
-            {isLogin ? t.signIn : t.signUp}
+            {isForgotPassword 
+              ? t.sendResetLink 
+              : isLogin ? t.signIn : t.signUp}
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={() => {
+              if (isForgotPassword) {
+                setIsForgotPassword(false);
+                setIsLogin(true);
+              } else {
+                setIsLogin(!isLogin);
+              }
+            }}
             className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
           >
-            {isLogin
-              ? t.noAccount
-              : t.hasAccount}
+            {isForgotPassword
+              ? t.backToLogin
+              : isLogin
+                ? t.noAccount
+                : t.hasAccount}
           </button>
         </div>
 

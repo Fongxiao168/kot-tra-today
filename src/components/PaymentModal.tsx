@@ -33,7 +33,10 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!receiptFile || !profile?.id) return;
+    if (!receiptFile || !profile?.id) {
+      toast.error('Missing receipt file or user profile.');
+      return;
+    }
 
     setLoading(true);
 
@@ -41,16 +44,22 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
       // 1. Upload receipt
       const fileExt = receiptFile.name.split('.').pop();
       const fileName = `${profile.id}-${Math.random()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('receipts')
         .upload(fileName, receiptFile);
 
-      if (uploadError) throw uploadError;
+      if (uploadError || !uploadData?.path) {
+        throw new Error('Failed to upload receipt file.');
+      }
 
       // 2. Get public URL
-      const { data: { publicUrl } } = supabase.storage
+      const { data: publicUrlData, error: publicUrlError } = supabase.storage
         .from('receipts')
         .getPublicUrl(fileName);
+
+      if (publicUrlError || !publicUrlData?.publicUrl) {
+        throw new Error('Failed to get public URL for receipt.');
+      }
 
       // 3. Create payment request
       const { data: newRequest, error: dbError } = await supabase
@@ -58,25 +67,24 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
         .insert({
           user_id: profile.id,
           amount: 3.00,
-          receipt_url: publicUrl,
+          receipt_url: publicUrlData.publicUrl,
           status: 'pending'
         })
         .select()
         .single();
 
-      if (dbError) throw dbError;
-
-      if (newRequest) {
-        setPaymentRequest(newRequest as any);
+      if (dbError || !newRequest) {
+        throw new Error('Failed to create payment request.');
       }
 
+      setPaymentRequest(newRequest as any);
       toast.success('Payment receipt submitted! Admin will review shortly.');
       onClose();
       setStep('choice');
       setReceiptFile(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Payment error:', error);
-      toast.error('Failed to submit payment. Please try again.');
+      toast.error(error.message || 'Failed to submit payment. Please try again.');
     } finally {
       setLoading(false);
     }

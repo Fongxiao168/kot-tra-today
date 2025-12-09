@@ -27,12 +27,13 @@ export function AdminDashboard() {
         if (profilesError) throw profilesError;
         setProfiles(profilesData || []);
 
+        // FIX: Remove join, just select all pending requests
         const { data: requestsData, error: requestsError } = await supabase
           .from('payment_requests')
-          .select('*, profiles:user_id(email, full_name)')
+          .select('*')
           .eq('status', 'pending')
           .order('created_at', { ascending: false });
-        
+
         if (requestsError) throw requestsError;
         setPaymentRequests(requestsData || []);
 
@@ -40,7 +41,7 @@ export function AdminDashboard() {
           .from('payment_requests')
           .select('*')
           .eq('status', 'approved');
-        
+
         if (approvedError) throw approvedError;
         setApprovedPayments(approvedData || []);
 

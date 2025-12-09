@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { Card, CardContent } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
@@ -44,9 +44,14 @@ const transactionSchema = z.object({
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
 export const Transactions = () => {
-  const { transactions, accounts, categories, addTransaction, updateTransaction, deleteTransaction, profile, language, systemStatus } = useStore();
+  const { transactions, accounts, categories, addTransaction, updateTransaction, deleteTransaction, profile, language, systemStatus, isLoading, fetchData } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetchData(true);
+  }, []);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -144,10 +149,21 @@ export const Transactions = () => {
     });
   };
   const handleAddTransaction = () => {
-    if (systemStatus.maintenance || systemStatus.alert) {
+    if (isLoading) return;
+    
+    // Allow admins to bypass maintenance
+    const isAdmin = profile?.role === 'admin';
+    if ((systemStatus.maintenance) && !isAdmin) {
       toast.error(systemStatus.message || 'Transactions are currently disabled');
       return;
     }
+
+    // Only allow activated (premium) users or admins to add transactions
+    if (!profile?.is_premium && !isAdmin) {
+      setIsPaymentModalOpen(true);
+      return;
+    }
+
     setEditingId(null);
     reset({
       type: 'expense',
@@ -305,14 +321,18 @@ export const Transactions = () => {
         </div>
         <button
           onClick={handleAddTransaction}
-          disabled={systemStatus.maintenance || systemStatus.alert}
+          disabled={isLoading || !profile}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors shadow-lg shadow-blue-600/20 w-full md:w-auto justify-center ${
-            systemStatus.maintenance || systemStatus.alert
+            isLoading || !profile
               ? 'bg-gray-400 cursor-not-allowed text-white'
               : 'bg-blue-600 hover:bg-blue-700 text-white'
           }`}
         >
-          <Plus className="w-5 h-5" />
+          {isLoading || !profile ? (
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <Plus className="w-5 h-5" />
+          )}
           {t.addTransaction}
         </button>
       </div>

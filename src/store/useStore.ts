@@ -24,7 +24,7 @@ interface StoreState {
   setUser: (user: User | null) => void;
   setPaymentRequest: (request: PaymentRequest | null) => void;
   setLanguage: (language: Language) => void;
-  fetchData: () => Promise<void>;
+  fetchData: (isBackground?: boolean) => Promise<void>;
   
   addAccount: (account: Account) => Promise<void>;
   updateAccount: (id: string, account: Partial<Account>) => Promise<void>;
@@ -74,85 +74,89 @@ export const useStore = create<StoreState>()(
       setPaymentRequest: (paymentRequest) => set({ paymentRequest }),
       setLanguage: (language) => set({ language }),
       
-      fetchData: async () => {
-        set({ isLoading: true });
+      fetchData: async (isBackground = false) => {
+        if (!isBackground) set({ isLoading: true });
         
         const { user } = get();
         
         // Only fetch if Supabase is configured and user is logged in
         if (!import.meta.env.VITE_SUPABASE_URL || !user) {
-          set({ isLoading: false });
+          if (!isBackground) set({ isLoading: false });
           return;
         }
 
-        // Fetch profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        if (profile) set({ profile: profile as any });
+        try {
+          // Fetch profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          if (profile) set({ profile: profile as any });
 
-        // Fetch latest payment request
-        const { data: paymentRequests } = await supabase
-          .from('payment_requests')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1);
-        
-        if (paymentRequests && paymentRequests.length > 0) {
-            set({ paymentRequest: paymentRequests[0] as any });
-        } else {
-            set({ paymentRequest: null });
-        }
+          // Fetch latest payment request
+          const { data: paymentRequests } = await supabase
+            .from('payment_requests')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          
+          if (paymentRequests && paymentRequests.length > 0) {
+              set({ paymentRequest: paymentRequests[0] as any });
+          } else {
+              set({ paymentRequest: null });
+          }
 
-        // Check System Status (Maintenance & Alerts)
-        const { data: settingsData } = await supabase
-          .from('system_settings')
-          .select('*')
-          .eq('key', 'maintenance_mode')
-          .single();
-        
-        const { data: alertData } = await supabase
-          .from('announcements')
-          .select('*')
-          .eq('type', 'alert')
-          .eq('is_active', true)
-          .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-          .limit(1);
+          // Check System Status (Maintenance & Alerts)
+          const { data: settingsData } = await supabase
+            .from('system_settings')
+            .select('*')
+            .eq('key', 'maintenance_mode')
+            .single();
+          
+          const { data: alertData } = await supabase
+            .from('announcements')
+            .select('*')
+            .eq('type', 'alert')
+            .eq('is_active', true)
+            .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+            .limit(1);
 
-        const isMaintenance = settingsData?.value?.enabled || false;
-        const isAlert = (alertData && alertData.length > 0) || false;
-        const statusMessage = isMaintenance 
-          ? (settingsData?.value?.message || 'System is under maintenance') 
-          : (isAlert ? 'System is under high alert' : undefined);
+          const isMaintenance = settingsData?.value?.enabled || false;
+          const isAlert = (alertData && alertData.length > 0) || false;
+          const statusMessage = isMaintenance 
+            ? (settingsData?.value?.message || 'System is under maintenance') 
+            : (isAlert ? 'System is under high alert' : undefined);
 
-        set({ 
-          systemStatus: { 
-            maintenance: isMaintenance, 
-            alert: isAlert,
-            message: statusMessage
-          } 
-        });
-
-        const { data: accounts } = await supabase.from('accounts').select('*');
-        const { data: transactions } = await supabase.from('transactions').select('*');
-        const { data: categories } = await supabase.from('categories').select('*');
-
-        if (accounts) set({ accounts: accounts as any });
-        if (transactions) {
-          set({
-            transactions: transactions.map((t) => ({
-              ...t,
-              accountId: t.account_id,
-              toAccountId: t.to_account_id,
-            })) as any,
+          set({ 
+            systemStatus: { 
+              maintenance: isMaintenance, 
+              alert: isAlert,
+              message: statusMessage
+            } 
           });
+
+          const { data: accounts } = await supabase.from('accounts').select('*');
+          const { data: transactions } = await supabase.from('transactions').select('*');
+          const { data: categories } = await supabase.from('categories').select('*');
+
+          if (accounts) set({ accounts: accounts as any });
+          if (transactions) {
+            set({
+              transactions: transactions.map((t) => ({
+                ...t,
+                accountId: t.account_id,
+                toAccountId: t.to_account_id,
+              })) as any,
+            });
+          }
+          if (categories && categories.length > 0) set({ categories: categories as any });
+        } catch (error) {
+          console.error('Error fetching data:', error);
+        } finally {
+          if (!isBackground) set({ isLoading: false });
         }
-        if (categories && categories.length > 0) set({ categories: categories as any });
-        
-        set({ isLoading: false });
       },
 
       addAccount: async (account) => {

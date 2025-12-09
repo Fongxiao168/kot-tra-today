@@ -101,7 +101,6 @@ export const useStore = create<StoreState>()(
         }
 
         const { data: accounts } = await supabase.from('accounts').select('*');
-        const { data: accounts } = await supabase.from('accounts').select('*');
         const { data: transactions } = await supabase.from('transactions').select('*');
         const { data: categories } = await supabase.from('categories').select('*');
 

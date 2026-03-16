@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Modal } from './ui/Modal';
-import { QrCode, Lock, CheckCircle2, Upload, Download } from 'lucide-react';
+import { QrCode, Lock, CheckCircle2, Upload, Download, Clock } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import { translations } from '../lib/i18n';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -14,7 +15,10 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
   const [step, setStep] = useState<'choice' | 'form'>('choice');
   const [loading, setLoading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const { profile, setPaymentRequest } = useStore();
+  const { profile, setPaymentRequest, language } = useStore();
+
+  const validLanguage = (language && translations[language]) ? language : 'en';
+  const t = translations[validLanguage].dashboard;
 
   const handlePayNow = () => {
     setStep('form');
@@ -90,18 +94,32 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
     }
   };
 
+  const isTrialExpired = profile?.free_trial_enabled && profile?.free_trial_end && new Date(profile.free_trial_end) <= new Date();
+
   if (step === 'choice') {
     return (
-      <Modal isOpen={isOpen} onClose={onClose} title="Premium Feature">
+      <Modal isOpen={isOpen} onClose={onClose} title={t.paymentModalTitle}>
         <div className="flex flex-col items-center text-center space-y-6 py-4">
-          <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center">
-            <Lock className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+            isTrialExpired 
+              ? 'bg-orange-100 dark:bg-orange-900/20' 
+              : 'bg-yellow-100 dark:bg-yellow-900/20'
+          }`}>
+            {isTrialExpired 
+              ? <Clock className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+              : <Lock className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
+            }
           </div>
           
           <div className="space-y-2">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Unlock Premium Access</h3>
+            {isTrialExpired && (
+              <p className="text-sm font-medium text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/10 px-3 py-1 rounded-full inline-block mb-1">
+                {t.paymentModalTrialExpired}
+              </p>
+            )}
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{t.paymentModalTitle}</h3>
             <p className="text-gray-500 dark:text-gray-400 max-w-sm">
-              To record transactions and manage accounts, you need to upgrade to our Premium plan.
+              {t.paymentModalDesc}
             </p>
           </div>
 
@@ -111,13 +129,13 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
               className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
             >
               <QrCode className="w-5 h-5" />
-              Pay Now ($3.00)
+              {t.paymentModalPayNow} ($3.00)
             </button>
             <button
               onClick={handlePayLater}
               className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-colors"
             >
-              Pay Later
+              {t.paymentModalPayLater}
             </button>
           </div>
         </div>
@@ -131,8 +149,8 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl flex items-start gap-3">
           <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
           <div>
-            <h4 className="font-medium text-blue-900 dark:text-blue-100">Lifetime Premium</h4>
-            <p className="text-sm text-blue-700 dark:text-blue-300">One-time payment via KHQR</p>
+            <h4 className="font-medium text-blue-900 dark:text-blue-100">{t.paymentModalLifetime}</h4>
+            <p className="text-sm text-blue-700 dark:text-blue-300">{t.paymentModalOneTime}</p>
           </div>
           <div className="ml-auto font-bold text-blue-900 dark:text-blue-100">$3.00</div>
         </div>

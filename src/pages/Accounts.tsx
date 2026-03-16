@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { Card, CardContent } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
@@ -13,6 +13,7 @@ import type { AccountType, Account } from '../types';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { translations } from '../lib/i18n';
+import { hasActiveAccess } from '../lib/utils';
 
 const accountSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -29,6 +30,16 @@ export const Accounts = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+
+  // Auto-show payment modal when free trial expires
+  useEffect(() => {
+    if (profile && !profile.is_premium && profile.free_trial_enabled && profile.free_trial_end) {
+      const trialEnd = new Date(profile.free_trial_end);
+      if (trialEnd <= new Date()) {
+        setIsPaymentModalOpen(true);
+      }
+    }
+  }, [profile]);
 
   const validLanguage = (language && translations[language]) ? language : 'en';
   const t = translations[validLanguage].accounts;
@@ -81,7 +92,7 @@ export const Accounts = () => {
   };
 
   const handleEdit = (account: any) => {
-    if (!profile?.is_premium) {
+    if (!hasActiveAccess(profile)) {
       setIsPaymentModalOpen(true);
       return;
     }
@@ -94,7 +105,7 @@ export const Accounts = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (!profile?.is_premium) {
+    if (!hasActiveAccess(profile)) {
       setIsPaymentModalOpen(true);
       return;
     }
@@ -139,7 +150,7 @@ export const Accounts = () => {
               toast.info(t.paymentProcessingAlert);
               return;
             }
-            if (!profile?.is_premium) {
+            if (!hasActiveAccess(profile)) {
               setIsPaymentModalOpen(true);
               return;
             }
@@ -179,7 +190,7 @@ export const Accounts = () => {
                   {t.tryAgain}
                 </button>
               </>
-            ) : profile?.is_premium ? (
+            ) : hasActiveAccess(profile) ? (
               <>
                 <h3 className="text-lg font-semibold text-green-600 dark:text-green-400">{t.paymentApprovedTitle}</h3>
                 <p className="text-slate-500 dark:text-slate-400 max-w-sm mt-1 mb-6 text-center">
@@ -200,7 +211,7 @@ export const Accounts = () => {
                 </p>
                 <button
                   onClick={() => {
-                    if (!profile?.is_premium) {
+                    if (!hasActiveAccess(profile)) {
                       setIsPaymentModalOpen(true);
                       return;
                     }

@@ -5,14 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Modal } from '../components/ui/Modal';
 import type { Account, PaymentRequest } from '../types';
 import { supabase } from '../lib/supabase';
-import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, TrendingDown, DollarSign, ChevronLeft, ChevronRight, Landmark, CreditCard, Banknote, Clock, AlertCircle } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, TrendingDown, DollarSign, ChevronLeft, ChevronRight, Landmark, CreditCard, Banknote, Clock, AlertCircle, Gift } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { format, startOfMonth, endOfMonth, isWithinInterval, subMonths, addMonths, parseISO } from 'date-fns';
 import { translations } from '../lib/i18n';
+import { PaymentModal } from '../components/PaymentModal';
+import { hasActiveAccess } from '../lib/utils';
 
 export const Dashboard = () => {
   const { accounts, transactions, categories, profile, language } = useStore();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   
   const validLanguage = (language && translations[language]) ? language : 'en';
@@ -42,6 +45,16 @@ export const Dashboard = () => {
     }
     checkPaymentStatus();
   }, [profile?.id]);
+
+  // Auto-show payment modal when free trial expires
+  useEffect(() => {
+    if (profile && !profile.is_premium && profile.free_trial_enabled && profile.free_trial_end) {
+      const trialEnd = new Date(profile.free_trial_end);
+      if (trialEnd <= new Date()) {
+        setIsPaymentModalOpen(true);
+      }
+    }
+  }, [profile]);
 
   // Calculate Total Net Worth
   const totalNetWorth = accounts.reduce((acc, curr) => acc + curr.balance, 0);
@@ -132,6 +145,55 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-8">
+      {/* Free Trial Expiry Banner */}
+      {profile?.free_trial_enabled && profile?.free_trial_end && (() => {
+        const trialEnd = new Date(profile.free_trial_end);
+        const now = new Date();
+        const isExpired = trialEnd <= now;
+        const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (isExpired) {
+          return (
+            <div className="p-4 rounded-xl border bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">{t.freeTrialExpired}</p>
+                    <p className="text-sm opacity-90">{t.freeTrialExpiredDesc}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  className="flex-shrink-0 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  {t.upgradeNow}
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        if (!profile.is_premium) {
+          const bannerColor = daysLeft <= 3
+            ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200'
+            : 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-200';
+          return (
+            <div className={`p-4 rounded-xl border ${bannerColor}`}>
+              <div className="flex items-center gap-3">
+                <Gift className="w-5 h-5" />
+                <div>
+                  <p className="font-medium">{t.freeTrialActive}</p>
+                  <p className="text-sm opacity-90">{daysLeft} {t.freeTrialDaysLeft}</p>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
+
       {/* Payment Status Banner */}
       {paymentStatus && paymentStatus.status !== 'approved' && (
         <div className={`p-4 rounded-xl border ${
@@ -459,6 +521,11 @@ export const Dashboard = () => {
           </div>
         )}
       </Modal>
+
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+      />
     </div>
   );
 };

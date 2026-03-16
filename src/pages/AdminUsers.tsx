@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
 import { format } from 'date-fns';
-import { Search, Shield, Ban, CheckCircle, Edit2, X, Download, Filter, Trash2, AlertTriangle, Users } from 'lucide-react';
+import { Search, Shield, Ban, CheckCircle, Edit2, X, Download, Filter, Trash2, AlertTriangle, Users, Gift, Clock, Mail, Key, Calendar, Hash, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ConfirmDialogProps {
@@ -128,6 +128,16 @@ function UserList({ users, onEdit, onDelete, title, icon, className = "" }: User
                       {user.status === 'banned' ? <Ban className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
                       {user.status || 'active'}
                     </span>
+                    {user.free_trial_enabled && user.free_trial_end && (
+                      <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                        new Date(user.free_trial_end) > new Date()
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800'
+                          : 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-800'
+                      }`}>
+                        <Gift className="w-3 h-3 mr-1" />
+                        {new Date(user.free_trial_end) > new Date() ? 'Free Trial' : 'Trial Expired'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {format(new Date(user.created_at), 'MMM d, yyyy')}
@@ -208,6 +218,16 @@ function UserList({ users, onEdit, onDelete, title, icon, className = "" }: User
                     {user.status === 'banned' ? <Ban className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
                     {user.status || 'active'}
                   </span>
+                  {user.free_trial_enabled && user.free_trial_end && (
+                    <span className={`ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
+                      new Date(user.free_trial_end) > new Date()
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800'
+                        : 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-800'
+                    }`}>
+                      <Gift className="w-3 h-3 mr-1" />
+                      {new Date(user.free_trial_end) > new Date() ? 'Trial' : 'Expired'}
+                    </span>
+                  )}
                 </div>
                 <div className="col-span-2">
                   <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Joined Date</div>
@@ -285,22 +305,42 @@ export function AdminUsers() {
       type: 'warning',
       action: async () => {
         try {
+          // Build the update payload
+          const updateData: Record<string, any> = {
+            role: editingUser.role,
+            status: editingUser.status || 'active',
+          };
+
+          // Handle free trial fields
+          updateData.free_trial_enabled = editingUser.free_trial_enabled || false;
+
+          if (editingUser.free_trial_enabled) {
+            updateData.free_trial_start = editingUser.free_trial_start || new Date().toISOString();
+            // Ensure free_trial_end is a proper ISO timestamp string
+            if (editingUser.free_trial_end) {
+              const endDate = new Date(editingUser.free_trial_end);
+              updateData.free_trial_end = endDate.toISOString();
+            } else {
+              updateData.free_trial_end = null;
+            }
+          } else {
+            updateData.free_trial_start = null;
+            updateData.free_trial_end = null;
+          }
+
           const { error } = await supabase
             .from('profiles')
-            .update({ 
-              role: editingUser.role,
-              status: editingUser.status 
-            })
+            .update(updateData)
             .eq('id', editingUser.id);
 
           if (error) throw error;
 
-          setUsers(users.map(u => u.id === editingUser.id ? editingUser : u));
+          setUsers(users.map(u => u.id === editingUser.id ? { ...editingUser, ...updateData } : u));
           toast.success('User updated successfully');
           setIsModalOpen(false);
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error updating user:', error);
-          toast.error('Failed to update user');
+          toast.error(error.message || 'Failed to update user');
         }
       }
     });
@@ -443,7 +483,12 @@ export function AdminUsers() {
 
       <UserList 
         users={adminUsers} 
-        onEdit={(user) => { setEditingUser(user); setIsModalOpen(true); }}
+        onEdit={(user) => {
+          // Auto-disable free trial if end date has passed
+          const isTrialExpired = user.free_trial_enabled && user.free_trial_end && new Date(user.free_trial_end) <= new Date();
+          setEditingUser(isTrialExpired ? { ...user, free_trial_enabled: false } : user);
+          setIsModalOpen(true);
+        }}
         onDelete={handleDeleteUserClick}
         title="Administrators"
         icon={<Shield className="w-5 h-5 text-purple-600" />}
@@ -452,7 +497,11 @@ export function AdminUsers() {
 
       <UserList 
         users={regularUsers} 
-        onEdit={(user) => { setEditingUser(user); setIsModalOpen(true); }}
+        onEdit={(user) => {
+          const isTrialExpired = user.free_trial_enabled && user.free_trial_end && new Date(user.free_trial_end) <= new Date();
+          setEditingUser(isTrialExpired ? { ...user, free_trial_enabled: false } : user);
+          setIsModalOpen(true);
+        }}
         onDelete={handleDeleteUserClick}
         title="Regular Users"
         icon={<Users className="w-5 h-5 text-blue-600" />}
@@ -461,15 +510,104 @@ export function AdminUsers() {
       {/* Edit User Modal */}
       {isModalOpen && editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit User</h3>
+          <div className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 rounded-t-2xl z-10">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">User Details</h3>
               <button 
                 onClick={() => setIsModalOpen(false)}
                 className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* User Info Header */}
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30">
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md">
+                  {editingUser.email?.[0].toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-base font-semibold text-gray-900 dark:text-white truncate">{editingUser.email}</h4>
+                  {editingUser.full_name && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{editingUser.full_name}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
+                      editingUser.role === 'admin' 
+                        ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800'
+                        : 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
+                    }`}>
+                      {editingUser.role === 'admin' ? <Shield className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                      {editingUser.role}
+                    </span>
+                    {editingUser.is_premium && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800">
+                        <Crown className="w-3 h-3 mr-1" />
+                        Premium
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Detail Grid */}
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <Hash className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-gray-500 dark:text-gray-400">ID:</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{editingUser.id.slice(0, 12)}...</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-gray-500 dark:text-gray-400">Joined:</span>
+                  <span className="text-gray-700 dark:text-gray-300">{format(new Date(editingUser.created_at), 'MMM d, yyyy')}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-gray-500 dark:text-gray-400">Status:</span>
+                  <span className={`font-medium ${editingUser.status === 'banned' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                    {editingUser.status || 'active'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Key className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-gray-500 dark:text-gray-400">Password:</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">••••••••</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Password Reset Section */}
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-orange-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Password Management</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Passwords are encrypted and cannot be viewed</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const { error } = await supabase.auth.resetPasswordForEmail(editingUser.email, {
+                        redirectTo: `${window.location.origin}/update-password`,
+                      });
+                      if (error) throw error;
+                      toast.success(`Password reset email sent to ${editingUser.email}`);
+                    } catch (error: any) {
+                      console.error('Error sending reset email:', error);
+                      toast.error(error.message || 'Failed to send reset email');
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  Send Reset Email
+                </button>
+              </div>
             </div>
             
             <form onSubmit={handleUpdateUserSubmit} className="p-6 space-y-4">
@@ -505,6 +643,66 @@ export function AdminUsers() {
                   <option value="active">Active</option>
                   <option value="banned">Banned</option>
                 </select>
+              </div>
+
+              {/* Free Trial Section */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Gift className="w-4 h-4 text-emerald-500" />
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Free Trial Access</label>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const enabling = !editingUser.free_trial_enabled;
+                      setEditingUser({
+                        ...editingUser,
+                        free_trial_enabled: enabling,
+                        free_trial_start: enabling ? new Date().toISOString() : editingUser.free_trial_start,
+                        free_trial_end: enabling
+                          ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                          : editingUser.free_trial_end
+                      });
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      editingUser.free_trial_enabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      editingUser.free_trial_enabled ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Allow this user to use the platform for free during the trial period. After the trial ends, they will need to pay to continue.
+                </p>
+
+                {editingUser.free_trial_enabled && (
+                  <div className="space-y-3 p-3 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        <Clock className="w-3 h-3 inline mr-1" />
+                        Trial End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={editingUser.free_trial_end ? editingUser.free_trial_end.split('T')[0] : ''}
+                        min={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => setEditingUser({ ...editingUser, free_trial_end: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    {editingUser.free_trial_end && (
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                        {new Date(editingUser.free_trial_end) > new Date()
+                          ? `Trial active — expires ${format(new Date(editingUser.free_trial_end), 'MMM d, yyyy')}`
+                          : `Trial expired on ${format(new Date(editingUser.free_trial_end), 'MMM d, yyyy')}`
+                        }
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 mt-6">

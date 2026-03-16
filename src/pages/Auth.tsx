@@ -26,7 +26,7 @@ export const Auth = () => {
   const t = translations[validLanguage].auth;
 
   const authSchema = z.object({
-    email: z.string().email(t.invalidEmail),
+    email: z.string().min(1, t.invalidEmail),
     password: isForgotPassword 
       ? z.string().optional() 
       : z.string().min(6, t.passwordLength),
@@ -135,22 +135,15 @@ export const Auth = () => {
           return;
         }
 
-        const { data: authData, error } = await supabase.auth.signUp({
-          ...credentials,
-          options: {
-            emailRedirectTo: window.location.origin,
-          },
-        });
+        const { data: authData, error } = await supabase.auth.signUp(credentials);
         if (error) throw error;
         
+        toast.success(t.signUpSuccess);
         if (authData.session) {
-          toast.success(t.signUpSuccess);
           await fetchData();
           navigate('/');
           return;
         }
-        
-        toast.success('Sign up successful! Please check your email for verification code.');
 
         setIsLogin(true);
         setIsLoading(false);

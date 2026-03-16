@@ -42,6 +42,9 @@ export interface Profile {
   role: 'user' | 'admin';
   status?: 'active' | 'banned';
   is_premium?: boolean;
+  free_trial_enabled?: boolean;
+  free_trial_start?: string;
+  free_trial_end?: string;
   created_at: string;
 }
 

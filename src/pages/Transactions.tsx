@@ -21,7 +21,7 @@ import {
   createColumnHelper,
   type SortingState,
 } from '@tanstack/react-table';
-import { cn } from '../lib/utils';
+import { cn, hasActiveAccess } from '../lib/utils';
 import { translations } from '../lib/i18n';
 
 const transactionSchema = z.object({
@@ -51,6 +51,16 @@ export const Transactions = () => {
   useEffect(() => {
     fetchData(true);
   }, []);
+
+  // Auto-show payment modal when free trial expires
+  useEffect(() => {
+    if (profile && !profile.is_premium && profile.free_trial_enabled && profile.free_trial_end) {
+      const trialEnd = new Date(profile.free_trial_end);
+      if (trialEnd <= new Date()) {
+        setIsPaymentModalOpen(true);
+      }
+    }
+  }, [profile]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -158,8 +168,8 @@ export const Transactions = () => {
       return;
     }
 
-    // Only allow activated (premium) users or admins to add transactions
-    if (!profile?.is_premium && !isAdmin) {
+    // Only allow activated (premium/free trial) users or admins to add transactions
+    if (!hasActiveAccess(profile) && !isAdmin) {
       setIsPaymentModalOpen(true);
       return;
     }
@@ -178,7 +188,7 @@ export const Transactions = () => {
       toast.error(systemStatus.message || 'Transactions are currently disabled');
       return;
     }
-    if (!profile?.is_premium) {
+    if (!hasActiveAccess(profile)) {
       setIsPaymentModalOpen(true);
       return;
     }
@@ -200,7 +210,7 @@ export const Transactions = () => {
       toast.error(systemStatus.message || 'Transactions are currently disabled');
       return;
     }
-    if (!profile?.is_premium) {
+    if (!hasActiveAccess(profile)) {
       setIsPaymentModalOpen(true);
       return;
     }

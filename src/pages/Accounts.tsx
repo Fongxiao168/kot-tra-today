@@ -192,9 +192,9 @@ export const Accounts = () => {
               </>
             ) : hasActiveAccess(profile) ? (
               <>
-                <h3 className="text-lg font-semibold text-green-600 dark:text-green-400">{t.paymentApprovedTitle}</h3>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{t.noAccounts}</h3>
                 <p className="text-slate-500 dark:text-slate-400 max-w-sm mt-1 mb-6 text-center">
-                  {t.paymentApproved}
+                  {t.noAccountsDesc}
                 </p>
                 <button
                   onClick={() => setIsModalOpen(true)}
